@@ -1,0 +1,954 @@
+<html><head><meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>都市林泉——上海中国画院藏公园主题作品展</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#8B5A2B',    // 传统棕色作为主色调
+            secondary: '#D2B48C',  // 棕褐色作为辅助色
+            accent: '#2F4F4F',     // 深绿色呼应公园主题
+            light: '#F9F6F0',      // 米白色作为背景色
+          },
+          fontFamily: {
+            sans: ['Noto Sans SC', 'sans-serif'],
+            serif: ['Noto Serif SC', 'serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .art-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .art-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+      .fade-in {
+        animation: fadeIn 0.5s ease-in;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .map-frame {
+        position: relative;
+        border: 10px solid #8B5A2B;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      }
+      .map-frame::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        border: 1px dashed #D2B48C;
+        pointer-events: none;
+      }
+      .home-bg {
+        background-image: url('img/城市景观.jpg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        position: relative;
+      }
+      .home-bg::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.85);
+        z-index: -1;
+      }
+    }
+  </style>
+
+
+  <!-- 导航栏 -->
+  </head><body><nav class="fixed w-full bg-white/90 backdrop-blur-sm shadow-md z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="#home" class="text-primary font-serif text-xl md:text-2xl font-bold">都市林泉</a>
+      <div class="hidden md:flex space-x-6">
+        <a href="#home" class="text-accent hover:text-primary transition-colors">首页</a>
+        <a href="#exhibition" class="text-accent hover:text-primary transition-colors">展览介绍</a>
+        <a href="#map-section" class="text-accent hover:text-primary transition-colors">都市公园地图</a>
+        <a href="#artworks" class="text-accent hover:text-primary transition-colors">画作欣赏</a>
+      </div>
+      <button class="md:hidden text-accent text-xl" id="menuToggle">
+        <i class="fa fa-bars"></i>
+      </button>
+    </div>
+    <!-- 移动端菜单 -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white px-4 py-2 shadow-lg">
+      <a href="#home" class="block py-2 text-accent hover:text-primary">首页</a>
+      <a href="#exhibition" class="block py-2 text-accent hover:text-primary">展览介绍</a>
+      <a href="#map-section" class="block py-2 text-accent hover:text-primary">都市公园</a>
+      <a href="#artworks" class="block py-2 text-accent hover:text-primary">画作欣赏</a>
+    </div>
+  </nav>
+
+  <!-- 首页/搜索区 - 添加了底图背景 -->
+  <div id="home" class="pt-24 pb-16 px-4 md:px-8 home-bg relative z-10">
+    <div class="container mx-auto text-center">
+      <!-- 完整显示展览名称，使用响应式字体大小和行高 -->
+      <h1 class="font-serif font-bold text-primary mb-6 text-shadow leading-tight">
+        <span class="text-[clamp(1.5rem,4vw,2.8rem)] block">都市林泉</span>
+        <span class="text-[clamp(1.2rem,3vw,2rem)] block mt-2">——上海中国画院藏公园主题作品展</span>
+      </h1>
+      
+      <p class="text-accent text-lg md:text-xl max-w-3xl mx-auto mb-8">
+        探索画作里的水墨意境，感受都市中的自然之美
+      </p>
+      
+      <div class="max-w-xl mx-auto flex flex-col sm:flex-row gap-3 mb-10">
+        <input type="text" id="keyword" placeholder="请输入关键词...例如：复兴公园，国庆节，林风眠" class="flex-1 px-4 py-3 rounded-lg border border-secondary focus:outline-none focus:ring-2 focus:ring-primary">
+        <button onclick="searchArtworks()" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+          <i class="fa fa-search"></i>
+          <span>寻找画作</span>
+        </button>
+      </div>
+      
+      <a href="#map-section" class="nav-button inline-block bg-accent/10 hover:bg-accent/20 text-accent px-6 py-3 rounded-lg transition-all border border-accent/30">
+        <i class="fa fa-map-marker mr-2"></i>查看公园地图
+      </a>
+      
+      <div id="search-result" class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 fade-in"></div>
+    </div>
+  </div>
+
+  <!-- 展览介绍 -->
+  <div id="exhibition" class="py-16 px-4 md:px-8 bg-white/80 backdrop-blur-sm">
+    <div class="container mx-auto max-w-4xl">
+      <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-serif font-bold text-primary mb-8 text-center">展览介绍</h2>
+      <div class="prose prose-lg max-w-none text-accent">
+        <p>1950年代，“新国画运动”兴起，中国画画家面临着这样的新议题：如何反映新时代的现实生活，如何将中国画艺术形式的改造与社会主义现实精神相结合。这一背景催生了新中国美术史上一批特殊的作品——以都市公园景观为主题的“都市林泉”绘画，在这些画作中，公园主题成为平衡主题创作需求与艺术表达的独特载体。“写生”是公园主题作品的重要创作来源。中国传统绘画向来重视写生，但此“写生”非彼“写生”，传统绘画理论以“外师造化，中得心源”来联结艺术与现实，将重心落在内心对造化的关照之上。近代以来，西画的大举引入，让实景写生似乎成为中国画振衰起弊的不二法门，但西画对景写生的观念始终与中国画的“师造化”处于互动之中。直至1950年代，随着新国画运动的展开，所有中国画画家都要去“直面生活”，走进真实的生活，这让绘画创作从功能到题材、再到技法语言都发生了极大改变。上海从近代以来就是中西融合的最佳试验场，画家们的公园主题创作正是其中一角精微的缩影。上海画家在传统笔墨中大胆融入多重技法创新，将“师造化”传统引入都市公园。画家们带着速写本走进人民公园、中山公园、龙华苗圃、林荫绿地……用笔墨记录市民休憩场景，使作品兼具自然生机与生活气息。在多元化的艺术探索中，上海画家的公园主题创作既保留了传统笔墨，又注入了时代符号。</p>
+      
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="rounded-lg overflow-hidden shadow-md">
+            <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/6d9c0cac39334a8399e1a106e9c378e1~tplv-a9rns2rl98-image.image?rcl=20250812150022F033D1239B900A53A1AC&amp;rk3s=8e244e95&amp;rrcfp=e75484ac&amp;x-expires=1755586823&amp;x-signature=BKLAvAF6ScslxOT7P90oXsmRPq4%3D" alt="展览现场照片" class="w-full h-64 object-cover">
+          </div>
+          <div class="rounded-lg overflow-hidden shadow-md">
+            <img src="https://p9-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/code_assistant/1194ea6b733a4204be5cde508b17b9a5~tplv-a9rns2rl98-image.image?rcl=202508121504452396136A6CF17A7436C2&amp;rk3s=8e244e95&amp;rrcfp=e75484ac&amp;x-expires=1755587086&amp;x-signature=DS4b2buX7%2BWv9xr%2BEA8QbrA%2FC2w%3D" alt="画作细节展示" class="w-full h-64 object-cover">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 地图区域 -->
+  <div id="map-section" class="py-16 px-4 md:px-8">
+    <div class="container mx-auto">
+      <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-serif font-bold text-primary mb-8 text-center">
+        在地图上寻找公园的踪迹...
+      </h2>
+      <p class="text-accent text-center max-w-2xl mx-auto mb-8">
+        点击地图上的标记，了解各个公园及其相关的画作作品
+      </p>
+      <div class="map-frame">
+        <div id="map" class="h-[500px] rounded-xl"></div>
+      </div>
+      <div id="park-info" class="bg-white/90 p-6 rounded-lg shadow-md max-w-2xl mx-auto hidden">
+        <h3 id="park-name" class="text-xl font-bold text-primary mb-2"></h3>
+        <p id="park-description" class="text-accent mb-4"></p>
+        <div id="park-artworks" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 画作欣赏 -->
+  <div id="artworks" class="py-16 px-4 md:px-8 bg-white/80 backdrop-blur-sm">
+    <div class="container mx-auto">
+      <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-serif font-bold text-primary mb-8 text-center">画作欣赏</h2>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="artwork-grid">
+        <!-- 画作卡片将通过JavaScript动态生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="bg-accent text-white py-10 px-4">
+    <div class="container mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h3 class="text-xl font-serif font-bold mb-4">都市林泉</h3>
+          <p class="mb-4">上海中国画院藏公园主题作品展</p>
+          <p>探索都市公园中的自然之美</p>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold mb-4">参观信息</h3>
+          <p class="mb-2"><i class="fa fa-map-marker mr-2"></i> 程十发美术馆</p>
+          <p class="mb-2"><i class="fa fa-calendar mr-2"></i> 2025年7月29日 - 10月16日</p>
+          <p><i class="fa fa-clock-o mr-2"></i> 9:00 - 17:00（周一闭馆）</p>
+        </div>
+      </div>
+      <div class="border-t border-white/30 mt-8 pt-8 text-center text-sm">
+      </div>
+    </div>
+  </footer>
+
+  <!-- 画作详情模态框 -->
+  <div id="artwork-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+      <div class="relative">
+        <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl z-10">
+          <i class="fa fa-times"></i>
+        </button>
+        <img id="modal-image" src="" alt="画作大图" class="w-full h-auto">
+      </div>
+      <div class="p-6">
+        <h3 id="modal-title" class="text-2xl font-serif font-bold text-primary mb-2"></h3>
+        <p id="modal-artist" class="text-accent mb-4"></p>
+        <p id="modal-description" class="text-gray-700 mb-4"></p>
+        <div class="flex justify-between items-center">
+          <span id="modal-year" class="text-gray-500"></span>
+          <span id="modal-park" class="bg-secondary/20 text-primary px-3 py-1 rounded-full text-sm"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // 画作数据
+    const artworks = [
+      // 复兴公园 (1-5)
+      {
+        id: 1,
+        title: "中山故居",
+        artist: "陈秋草",
+        year: 1966,
+        park: "复兴公园",
+        description: "纸本设色 104×69cm，描绘了复兴公园内孙中山先生故居的秋日景象",
+        image: "./img/中山故居.jpg"
+      },
+      {
+        id: 2,
+        title: "上海长风公园秋景",
+        artist: "朱屺瞻",
+        year: 1965,
+        park: "上海长风公园",
+        description: "纸本设色 137×69cm",
+        image: "./img/上海长风公园秋景.png"
+      },
+      {
+        id: 3,
+        title: "襄阳公园里的鱼池",
+        artist: "贺天健",
+        year: 1958,
+        park: "襄阳公园",
+        description: "纸本设色 68×34cm",
+        image: "./img/襄阳公园里的鱼池.png"
+      },
+      {
+        id: 4,
+        title: "西郊秋爽",
+        artist: "孙雪泥",
+        year: 1964,
+        park: "西郊公园",
+        description: "纸本设色 31×45cm",
+        image: "./img/西郊秋爽.png"
+      },
+      {
+        id: 5,
+        title: "西郊公园写景",
+        artist: "吴湖帆",
+        year: 1958,
+        park: "西郊公园",
+        description: "纸本设色 107x56.5cm",
+        image: "./img/西郊公园写景.png"
+      },
+
+      // 豫园 (6-8)
+      {
+        id: 6,
+        title: "春满豫园",
+        artist: "谢之光",
+        year: 1974,
+        park: "豫园",
+        description: "纸本设色 111.5×62cm，描绘了春天豫园的满园春色",
+        image: "./img/春满豫园.png"
+      },
+      {
+        id: 7,
+        title: "豫园点春堂",
+        artist: "陆俨少 李秋君",
+        year: 1966,
+        park: "豫园",
+        description: "纸本设色 111×69.5cm",
+        image: "./img/豫园点春堂.png"
+      },
+      {
+        id: 8,
+        title: "豫园湖心亭",
+        artist: "李秋君",
+        year: 1959,
+        park: "豫园",
+        description: "纸本设色 91.5×51cm",
+        image: "./img/豫园湖心亭.png"
+      },
+      {
+        id: 9,
+        title: "月月红",
+        artist: "陈佩秋",
+        year: 1959,
+        park: "中山公园",
+        description: "绢本设色 78x39cm，中山公园内盛开的月季花",
+        image: "./img/月月红.png"
+      },
+      {
+        id: 10,
+        title: "中山公园的水上快乐",
+        artist: "贺天健",
+        year: 1958,
+        park: "中山公园",
+        description: "纸本设色  94×68.5cm",
+        image: "./img/中山公园的水上快乐.png"
+      },
+
+      // 中山公园 (11-15)
+      {
+        id: 11,
+        title: "中山公园所见",
+        artist: "江寒汀",
+        year: 1958,
+        park: "中山公园",
+        description: "纸本设色 139×68cm",
+        image: "./img/中山公园所见.png"
+      },
+      {
+        id: 12,
+        title: "鲁迅先生墓前",
+        artist: "陈秋草",
+        year: 1973, 
+        park: "鲁迅公园",
+        description: "纸本设色 135.5×67.5cm，描绘了鲁迅公园内鲁迅先生墓前的景象",
+        image: "./img/鲁迅先生墓前.png"
+      },
+      {
+        id: 13,
+        title: "上海鲁迅纪念馆",
+        artist: "朱屺瞻",
+        year: 1959,
+        park: "鲁迅公园",
+        description: "纸本设色 90×51cm",
+        image: "./img/上海鲁迅纪念馆.png"
+      },
+      {
+        id: 14,
+        title: "鲁迅纪念馆",
+        artist: "张炎夫",
+        year: 1966,
+        park: "鲁迅公园",
+        description: "纸本设色 102×64cm",
+        image: "./img/鲁迅纪念馆.png"
+      },
+      {
+        id: 15,
+        title: "上海鲁迅纪念馆",
+        artist: "袁松年",
+        year: 1959,
+        park: "鲁迅公园",
+        description: "纸本设色 89×51cm",
+        image: "./img/上海鲁迅纪念馆2.png"
+      },
+
+      // 人民公园 (16-20)
+      {
+        id: 16,
+        title: "人民公园",
+        artist: "袁松年",
+        year: 1960,
+        park: "人民公园",
+        description: "纸本设色 117.5×68.5cm",
+        image: "./img/人民公园.png"
+      },
+      {
+        id: 17,
+        title: "人民公园之夏",
+        artist: "张雪父",
+        year: 1959,
+        park: "人民公园",
+        description: "纸本设色 91×52cm",
+        image: "./img/人民公园之夏.png"
+      },
+      {
+        id: 18,
+        title: "人民公园",
+        artist: "郑慕康",
+        year: 1959,
+        park: "人民公园",
+        description: "纸本设色 92×52cm",
+        image: "./img/人民公园2.png"
+      },
+      {
+        id: 19,
+        title: "忆春节人民公园所见",
+        artist: "唐云 白蕉",
+        year: 1959,
+        park: "人民公园",
+        description: "纸本水墨 97×36cm",
+        image: "./img/忆春节人民公园所见.png"
+      },
+      {
+        id: 20,
+        title: "寒牡丹",
+        artist: "陈小翠",
+        year: 1959,
+        park: "人民公园",
+        description: "纸本设色  74.5×35.5cm",
+        image: "./img/寒牡丹.png"
+      },
+
+      // 龙华苗圃 (21-28)
+      {
+        id: 21,
+        title: "龙华之春",
+        artist: "黄幻吾",
+        park: "龙华苗圃",
+        description: "纸本设色 137×69cm",
+        image: "./img/龙华之春.png"
+      },
+      {
+        id: 22,
+        title: "龙华春浓",
+        artist: "江寒汀 孙祖勃",
+        year: 1959,
+        park: "龙华苗圃",
+        description: "纸本设色 91×51cm",
+        image: "./img/龙华春浓.png"
+      },
+      {
+        id: 23,
+        title: "龙华道上",
+        artist: "应野平 乐小英",
+        year: 1966,
+        park: "龙华苗圃",
+        description: "纸本水墨 69×34cm",
+        image: "./img/龙华道上.png"
+      },
+      {
+        id: 24,
+        title: "龙华苗圃·海棠",
+        artist: "来楚生",
+        year: 1959,
+        park: "龙华苗圃",
+        description: "纸本设色 99×34cm",
+        image: "./img/龙华苗圃海棠.png"
+      },
+      {
+        id: 25,
+        title: "芍药",
+        artist: "陆抑非",
+        year: 1959,
+        park: "龙华苗圃",
+        description: "纸本设色 87.5×46.5cm",
+        image: "./img/芍药.png"
+      },
+      {
+        id: 26,
+        title: "紫荆花",
+        artist: "庞左玉",
+        year: 1963,
+        park: "龙华苗圃",
+        description: "纸本设色 97×34cm",
+        image: "./img/紫荆花.png"
+      },
+      {
+        id: 27,
+        title: "吊钟扶桑",
+        artist: "叶露园",
+        year: 1960,
+        park: "龙华苗圃",
+        description: "纸本设色 68×44.5cm",
+        image: "./img/吊钟扶桑.png"
+      },
+      {
+        id: 28,
+        title: "牡丹开",
+        artist: "张大壮",
+        year: 1958,
+        park: "龙华苗圃",
+        description: "纸本设色 100×53.5cm",
+        image: "./img/牡丹开.png"
+      },
+      
+      // 其他公园 (29-45)
+      {
+        id: 29,
+        title: "古猗园之夏",
+        artist: "董天野",
+        year: 1959,
+        park: "古猗园",
+        description: "纸本设色 91.5×50.5cm",
+        image: "./img/古漪园.png"
+      },
+      {
+        id: 30,
+        title: "提篮公园开幕",
+        artist: "沈迈士",
+        year: 1959,
+        park: "和平公园",
+        description: "纸本设色 96×52.5cm",
+        image: "./img/提篮公园开幕.png"
+      },
+      {
+        id: 31,
+        title: "黄浦江上朝气蓬勃",
+        artist: "胡伯翔",
+        year: 1959,
+        park: "外滩",
+        description: "纸本设色 91×51cm",
+        image: "./img/黄浦江上朝气蓬勃.png"
+      },
+      {
+        id: 32,
+        title: "朝晖",
+        artist: "陈秋草",
+        park: "外滩",
+        description: "纸本设色 68×137cm",
+        image: "./img/朝晖.png"
+      },
+      {
+        id: 33,
+        title: "节日的上海（之一）",
+        artist: "钱瘦铁",
+        year: 1963,
+        park: "外滩",
+        description: "纸本设色 93×70cm",
+        image: "./img/节日的上海（之一）.png"
+      },
+      {
+        id: 34,
+        title: "节日的上海（之二）",
+        artist: "钱瘦铁",
+        year: 1963,
+        park: "外滩",
+        description: "纸本设色 62.5×47cm",
+        image: "./img/节日的上海（之二）.png"
+      },
+      {
+        id: 35,
+        title: "上海的早晨",
+        artist: "袁松年",
+        year: 1958,
+        description: "纸本设色 94×177.5cm",
+        image: "./img/上海的早晨.png"
+      },
+      {
+        id: 36,
+        title: "林荫大道",
+        artist: "陆俨少",
+        description: "纸本设色 64×45cm",
+        image: "./img/林荫大道.png"
+      },
+      {
+        id: 37,
+        title: "市区三化",
+        artist: "周鍊霞",
+        year: 1958,
+        description: "纸本设色 124×57cm",
+        image: "./img/市区三化.png"
+      },
+      {
+        id: 38,
+        title: "苏州河晨曦",
+        artist: "吴青霞",
+        year: 1959,
+        description: "纸本设色 91×51cm",
+        image: "./img/苏州河晨曦.png"
+      },
+      {
+        id: 39,
+        title: "绿化都市",
+        artist: "朱屺瞻",
+        year: 1959,
+        description: "纸本设色  91×51cm",
+        image: "./img/绿化都市.png"
+      },
+      {
+        id: 40,
+        title: "市图书馆与市博物馆",
+        artist: "朱屺瞻",
+        year: 1959,
+        description: "纸本设色  91×51cm",
+        image: "./img/市图书馆与博物馆.png"
+      },
+      {
+        id: 41,
+        title: "公园里的傍晚",
+        artist: "贺天健",
+        year: 1958,
+        description: "纸本设色 140×68.5cm",
+        image: "./img/公园里的傍晚.png"
+      },
+      {
+        id: 42,
+        title: "公园里的骆驼",
+        artist: "贺天健", 
+        year: 1958,
+        description: "纸本设色 69.5×35cm",
+        image: "./img/公园里的骆驼.png"
+      },
+      {
+        id: 43,
+        title: "幸福少年欢度快乐假日",
+        artist: "李秋君",
+        year: 1958,
+        description: "纸本水墨 107×51.5cm",
+        image: "./img/幸福少年欢度快乐假日.png"
+      },
+      {
+        id: 44,
+        title: "春天",
+        artist: "林风眠",
+        year: 1940,
+        description: "纸本设色 66.5×67cm",
+        image: "./img/春天.png"
+      },
+      {
+        id: 45,
+        title: "松园",
+        artist: "林风眠",
+        year: 1950,
+        description: "纸本设色 67.5×66cm",
+        image: "./img/松园.png"
+      },
+    ];
+
+   // 公园数据（世纪公园不关联任何画作）
+    const parks = [
+      {
+        id: 1,
+        name: "复兴公园",
+        location: [31.2178, 121.4714],
+        description: "复兴公园位于上海市黄浦区，是上海最古老的公园之一，融合了法式园林和中式造景风格。",
+        artworks: [1]
+      },
+      {
+        id: 2,
+        name: "豫园",
+        location: [31.2277, 121.4845],
+        description: "豫园是上海著名的古典园林，建于明代嘉靖、隆庆年间（1559-1577年），是江南古典园林的代表作品。",
+        artworks: [6, 7, 8]
+      },
+      {
+        id: 3,
+        name: "中山公园",
+        location: [31.2296, 121.4376],
+        description: "中山公园原名兆丰公园，位于上海市长宁区，是上海历史悠久的公园之一，以其英式园林风格著称。",
+        artworks: [9, 10, 11]
+      },
+      {
+        id: 4,
+        name: "人民公园",
+        location: [31.2304, 121.4669],
+        description: "人民公园位于上海市中心，毗邻上海博物馆和南京路步行街，是市民休闲娱乐的重要场所。",
+        artworks: [16, 17, 18, 19, 20]
+      },
+      {
+        id: 5,
+        name: "龙华苗圃",
+        location: [31.1472, 121.4443],
+        description: "龙华苗圃，现为上海植物园，是一个以植物引种驯化和展示、园艺研究及科普教育为主的综合性植物园。",
+        artworks: [21, 22, 23, 24, 25, 26, 27, 28]
+      },
+      {
+        id: 6,
+        name: "西郊公园",
+        location: [31.1901, 121.3680],
+        description: "现为上海动物园，位于长宁区，是集娱乐休闲、动物知识普及、科学技术研究及野生动物保护的四大职能兼具的综合性公园。",
+        artworks: [4, 5]
+      },
+      {
+        id: 7,
+        name: "鲁迅公园",
+        location: [31.2472, 121.4851],
+        description: "鲁迅公园原名虹口公园，位于上海市虹口区，是为纪念鲁迅先生而改名的综合性公园。",
+        artworks: [12, 13, 14, 15]
+      },
+      {
+        id: 8,
+        name: "徐家汇公园",
+        location: [31.1990, 121.4463],
+        description: "徐家汇公园位于上海市徐汇区，是在原大中华橡胶厂旧址上建造的现代公园。",
+        artworks: []
+      },
+      {
+        id: 9,
+        name: "和平公园",
+        location: [31.2430, 121.4920],
+        description: "和平公园位于虹口区，以中国自然山水园林风格为特色，园内有湖光山色和丰富的植被。",
+        artworks: [30]
+      },
+      {
+        id: 10,
+        name: "苏州河",
+        location: [31.1800, 121.4680],
+        description: "苏州河作为上海市的母亲河，其核心河段位于上海市中心城区，全长约53.1公里，横跨上海8个行政区，其源头位于太湖流域，最终汇入黄浦江。",
+        artworks: [38]
+      },
+      {
+        id: 11,
+        name: "黄浦公园",
+        location: [31.2340, 121.4900],
+        description: "黄浦公园位于黄浦江畔，是上海最早的公园，也是观赏外滩景色的绝佳地点。",
+        artworks: [31, 32, 33, 34]
+      },
+      {
+        id: 12,
+        name: "襄阳公园",
+        location: [31.2150, 121.4580],
+        description: "襄阳公园位于徐汇区，原为法租界公园，具有浓郁的法式园林风格，以精致的布局和丰富的花卉著称。",
+        artworks: [3]
+      },
+      {
+        id: 13,
+        name: "古猗园",
+        location: [31.2872, 121.3178],
+        description: "古猗园位于嘉定区南翔镇，始建于明嘉靖年间，是上海五大古典园林之一。",
+        artworks: [29]
+      },
+      {
+        id: 14,
+        name: "长风公园",
+        location: [31.2360, 121.3980],
+        description: "长风公园位于普陀区，以大型人工湖银锄湖为中心，是上海西部最大的综合性公园之一。",
+        artworks: [2]
+      },
+      // 浦东世纪公园（不关联任何画作）
+      {
+        id: 15,
+        name: "世纪公园",
+        location: [31.2195, 121.5582],
+        description: "世纪公园位于浦东新区，是上海内环线中心区域内最大的富有自然特征的生态城市公园，占地140.3公顷，体现了东西方园林艺术和人与自然的融合。",
+        artworks: [] // 不关联任何画作
+      }
+    ];
+
+    // 初始化地图
+    function initMap() {
+      const map = L.map('map').setView([31.2304, 121.4737], 12); // 上海中心坐标
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 添加公园标记
+      parks.forEach(park => {
+        const marker = L.marker(park.location).addTo(map);
+        marker.bindPopup(`<b>${park.name}</b><br>${park.description.substring(0, 50)}...`);
+        
+        marker.on('click', () => {
+          showParkInfo(park);
+        });
+      });
+    }
+
+    // 显示公园信息及相关画作
+    function showParkInfo(park) {
+      document.getElementById('park-name').textContent = park.name;
+      document.getElementById('park-description').textContent = park.description;
+      
+      const artworksContainer = document.getElementById('park-artworks');
+      artworksContainer.innerHTML = '';
+      
+      // 筛选该公园的画作
+      const parkArtworks = artworks.filter(art => park.artworks.includes(art.id));
+      
+      if (parkArtworks.length > 0) {
+        parkArtworks.forEach(art => {
+          const artElement = document.createElement('div');
+          artElement.className = 'art-card cursor-pointer';
+          artElement.innerHTML = `
+            <img src="${art.image}" alt="${art.title}" class="w-full h-40 object-cover rounded-lg">
+            <h4 class="mt-2 text-primary font-bold">${art.title}</h4>
+            <p class="text-sm text-accent">${art.artist}, ${art.year}</p>
+          `;
+          
+          artElement.addEventListener('click', () => {
+            showArtworkDetail(art);
+          });
+          
+          artworksContainer.appendChild(artElement);
+        });
+      } else {
+        artworksContainer.innerHTML = '<p class="text-accent text-center">暂无相关画作</p>';
+      }
+      
+      document.getElementById('park-info').classList.remove('hidden');
+      document.getElementById('park-info').classList.add('fade-in');
+      
+      // 平滑滚动到公园信息
+      document.getElementById('park-info').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 搜索画作
+    function searchArtworks() {
+      const keyword = document.getElementById('keyword').value.toLowerCase().trim();
+      const resultContainer = document.getElementById('search-result');
+      
+      if (!keyword) {
+        resultContainer.innerHTML = '<p class="text-accent text-center">请输入关键词进行搜索</p>';
+        return;
+      }
+      
+      // 根据关键词筛选画作
+      const filteredArtworks = artworks.filter(art => 
+        art.title.toLowerCase().includes(keyword) || 
+        art.artist.toLowerCase().includes(keyword) || 
+        (art.park && art.park.toLowerCase().includes(keyword))
+      );
+      
+      if (filteredArtworks.length === 0) {
+        resultContainer.innerHTML = `<p class="text-accent text-center">没有找到与"${keyword}"相关的画作</p>`;
+      } else {
+        resultContainer.innerHTML = '';
+        filteredArtworks.forEach(art => {
+          const artElement = createArtworkCard(art);
+          resultContainer.appendChild(artElement);
+        });
+      }
+      
+      // 平滑滚动到结果
+      resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 创建画作卡片
+    function createArtworkCard(art) {
+      const card = document.createElement('div');
+      card.className = 'art-card bg-white rounded-lg overflow-hidden shadow-md cursor-pointer';
+      
+      // 只在公园信息存在时显示公园标签
+      const parkTag = art.park ? `<span class="inline-block bg-secondary/20 text-primary px-3 py-1 rounded-full text-sm">${art.park}</span>` : '';
+      
+      card.innerHTML = `
+        <img src="${art.image}" alt="${art.title}" class="w-full h-64 object-cover">
+        <div class="p-4">
+          <h3 class="text-xl font-serif font-bold text-primary mb-1">${art.title}</h3>
+          <p class="text-accent mb-2">${art.artist} · ${art.year || '年代不详'}</p>
+          <p class="text-gray-600 text-sm mb-3">${art.description.substring(0, 100)}...</p>
+          ${parkTag}
+        </div>
+      `;
+      
+      card.addEventListener('click', () => {
+        showArtworkDetail(art);
+      });
+      
+      return card;
+    }
+
+    // 显示画作详情
+    function showArtworkDetail(art) {
+      document.getElementById('modal-image').src = art.image;
+      document.getElementById('modal-title').textContent = art.title;
+      document.getElementById('modal-artist').textContent = art.artist;
+      document.getElementById('modal-year').textContent = art.year || '年代不详';
+      document.getElementById('modal-description').textContent = art.description;
+      
+      // 处理公园信息，不存在则隐藏标签
+      const parkElement = document.getElementById('modal-park');
+      if (art.park) {
+        parkElement.textContent = art.park;
+        parkElement.style.display = 'inline-block';
+      } else {
+        parkElement.style.display = 'none';
+      }
+      
+      document.getElementById('artwork-modal').classList.remove('hidden');
+      document.getElementById('artwork-modal').classList.add('flex');
+      document.body.style.overflow = 'hidden'; // 防止背景滚动
+    }
+
+    // 关闭画作详情模态框
+    function closeModal() {
+      document.getElementById('artwork-modal').classList.add('hidden');
+      document.getElementById('artwork-modal').classList.remove('flex');
+      document.body.style.overflow = ''; // 恢复背景滚动
+    }
+
+    // 初始化画作网格
+    function initArtworkGrid() {
+      const gridContainer = document.getElementById('artwork-grid');
+      artworks.forEach(art => {
+        const artElement = createArtworkCard(art);
+        gridContainer.appendChild(artElement);
+      });
+    }
+
+    // 移动端菜单切换
+    function toggleMobileMenu() {
+      const mobileMenu = document.getElementById('mobileMenu');
+      mobileMenu.classList.toggle('hidden');
+    }
+
+    // 平滑滚动
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        
+        const targetId = this.getAttribute('href');
+        const targetElement = document.querySelector(targetId);
+        
+        if (targetElement) {
+          targetElement.scrollIntoView({
+            behavior: 'smooth'
+          });
+          
+          // 关闭移动端菜单
+          document.getElementById('mobileMenu').classList.add('hidden');
+        }
+      });
+    });
+
+    // 导航栏滚动效果
+    window.addEventListener('scroll', () => {
+      const nav = document.querySelector('nav');
+      if (window.scrollY > 50) {
+        nav.classList.add('py-2');
+        nav.classList.remove('py-3');
+      } else {
+        nav.classList.add('py-3');
+        nav.classList.remove('py-2');
+      }
+    });
+
+    // 页面加载完成后初始化
+    window.addEventListener('load', () => {
+      initMap();
+      initArtworkGrid();
+      
+      // 绑定事件监听
+      document.getElementById('menuToggle').addEventListener('click', toggleMobileMenu);
+      document.getElementById('close-modal').addEventListener('click', closeModal);
+      
+      // 点击模态框外部关闭
+      document.getElementById('artwork-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('artwork-modal')) {
+          closeModal();
+        }
+      });
+    });
+  </script>
+
+
+    
+    </body></html>
